@@ -20,7 +20,7 @@ def infiniteTalk():
 class ROSTalker:
     def __init__(self, rosNode):
         self._publisher= rosNode.create_publisher(Twist, '/multi/cmd_nav', 10 )
-        self._timer = rosNode.create_timer(2, self.timer_callback)
+        self._timer = rosNode.create_timer(9, self.timer_callback)
         self._i = 0
 
     def timer_callback(self):
@@ -32,14 +32,66 @@ class ROSTalker:
 
         velocity.angular.x = 0.0
         velocity.angular.y = 0.0
-        velocity.angular.z = -0.7
+        velocity.angular.z = 0.0
 
         # Publish 
         self._publisher.publish(velocity)
-        time.sleep(1)
-        velocity.angular.z = 0.7
-        # Publish 
+
+        for i in range(10):
+            velocity.linear.x += 0.05
+            self._publisher.publish(velocity)
+            time.sleep(0.1)
+
+        for i in range(10):
+            velocity.linear.x -= 0.05
+            self._publisher.publish(velocity)
+            time.sleep(0.1)
+
+        velocity.linear.x = 0.0
+        velocity.angular.z = 1.0
         self._publisher.publish(velocity)
+        time.sleep(0.5)
+
+        velocity.angular.z = -1.0
+        self._publisher.publish(velocity)
+        time.sleep(0.5)
+
+        velocity.angular.z = -1.0
+        self._publisher.publish(velocity)
+        time.sleep(0.5)
+
+        velocity.angular.z = 1.0
+        self._publisher.publish(velocity)
+        time.sleep(0.5)
+
+        velocity.angular.z = 0.0
+        for i in range(10):
+            velocity.linear.x -= 0.05
+            self._publisher.publish(velocity)
+            time.sleep(0.1)
+
+        for i in range(10):
+            velocity.linear.x += 0.05
+            self._publisher.publish(velocity)
+            time.sleep(0.1)
+
+        velocity.linear.x = 0.0
+        velocity.angular.z = 1.0
+        self._publisher.publish(velocity)
+        time.sleep(0.5)
+
+        velocity.angular.z = -1.0
+        self._publisher.publish(velocity)
+        time.sleep(0.5)
+
+        velocity.angular.z = -1.0
+        self._publisher.publish(velocity)
+        time.sleep(0.5)
+
+        velocity.angular.z = 1.0
+        self._publisher.publish(velocity)
+        time.sleep(0.5)
+
 
 # Execute the function.
 if __name__ == "__main__":
