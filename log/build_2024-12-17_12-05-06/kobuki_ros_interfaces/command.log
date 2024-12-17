@@ -1,0 +1,4 @@
+Invoking command in '/home/o2p9/ros_space/build/kobuki_ros_interfaces': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/iron /usr/bin/cmake --build /home/o2p9/ros_space/build/kobuki_ros_interfaces -- -j4 -l4
+Invoked command in '/home/o2p9/ros_space/build/kobuki_ros_interfaces' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/iron /usr/bin/cmake --build /home/o2p9/ros_space/build/kobuki_ros_interfaces -- -j4 -l4
+Invoking command in '/home/o2p9/ros_space/build/kobuki_ros_interfaces': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/iron /usr/bin/cmake --install /home/o2p9/ros_space/build/kobuki_ros_interfaces
+Invoked command in '/home/o2p9/ros_space/build/kobuki_ros_interfaces' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/iron /usr/bin/cmake --install /home/o2p9/ros_space/build/kobuki_ros_interfaces
