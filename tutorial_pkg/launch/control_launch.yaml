@@ -1,7 +1,7 @@
 launch:
   - node:
       pkg: "tutorial_pkg"
-      exec: "talker"
+      exec: "straight"
   - node:
       pkg: "tutorial_pkg"
-      exec: "listener"
+      exec: "scan_echo"

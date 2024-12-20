@@ -25,5 +25,9 @@ endif()
 
 ament_package()
 
+
+install(DIRECTORY launch DESTINATION share/${PROJECT_NAME}/)
+
 # Python scripts
-install( PROGRAMS scripts/test_move DESTINATION lib/${PROJECT_NAME} )
+install( PROGRAMS scripts/scan_echo DESTINATION lib/${PROJECT_NAME} )
+install( PROGRAMS scripts/straight DESTINATION lib/${PROJECT_NAME} )
