@@ -13,28 +13,28 @@ THRESHOLD_DIST = 0.4
 def infiniteTalk():
     # Initialize ROS node with ROS client
     rclpy.init()
-    aNode = Node('scan_interpreter')
-    talker = ROSNav(aNode)
+    aNode = Node('basic_move')
+    control = StraightCtrl(aNode)
     # Start infinite loop
     rclpy.spin(aNode)
     # Clean everything and switch the light off
     aNode.destroy_node()
     rclpy.shutdown()
 
-class ROSNav:
+class StraightCtrl:
     def __init__(self, rosNode):
         self.rosNode = rosNode
         self.rosNode.create_subscription( LaserScan, 'scan', self.scan_callback, 10)
         self._publisher= rosNode.create_publisher(Twist, '/multi/cmd_nav', 10 )
-        self._timer = rosNode.create_timer(0.1, self.timer_callback)
+        self._timer = rosNode.create_timer(0.1, self.control_callback)
         self._i = 0
         self.dist_min = float('inf')
         self.angle_dist_min = 0
 
-    def timer_callback(self):
+    def control_callback(self):
         velocity = Twist()
         # Feed Twist velocity values
-        velocity.linear.x = 0.2
+        velocity.linear.x = 0.15
         velocity.linear.y = 0.0
         velocity.linear.z = 0.0
 
@@ -70,34 +70,3 @@ class ROSNav:
 # Execute the function.
 if __name__ == "__main__":
     infiniteTalk()
-
-
-'''def scan_callback(scanMsg):
-    global rosNode
-
-    obstacles= []
-    angle= scanMsg.angle_min
-    for aDistance in scanMsg.ranges :
-        if 0.1 < aDistance and aDistance < 5.0 :
-            aPoint= Point32()
-            aPoint.x= (float)(math.cos(angle) * aDistance)
-            aPoint.y= (float)(math.sin( angle ) * aDistance)
-            aPoint.z= (float)(0)
-            obstacles.append(aPoint)
-
-        angle+= scanMsg.angle_increment
-
-    output = PointCloud()
-    output.points = obstacles
-    output.header.frame_id = 'base_link'
-    aPublisher.publish(output)
-
-rclpy.init()
-rosNode= Node('scan_interpreter')
-rosNode.create_subscription( LaserScan, 'scan', scan_callback, 10)
-aPublisher= rosNode.create_publisher(PointCloud, 'sensor_msgs/PointCloud2', 10 )
-
-while True :
-    rclpy.spin_once( rosNode )
-scanInterpret.destroy_node()
-rclpy.shutdown()'''
