@@ -54,6 +54,11 @@ class Realsense(Node):
         self.config.enable_stream(rs.stream.color, 848, 480, rs.format.bgr8, 60)
         self.config.enable_stream(rs.stream.depth, 848, 480, rs.format.z16, 60)
 
+        #IR
+        self.config.enable_stream(rs.stream.infrared, 1, 848, 480, rs.format.y8, 60)
+        self.config.enable_stream(rs.stream.infrared, 2, 848, 480, rs.format.y8, 60)
+
+
         # Start streaming
         self.pipeline.start(self.config)
 
@@ -63,6 +68,10 @@ class Realsense(Node):
         # Create publishers
         self.image_publisher = self.create_publisher(Image, '/sensor_msgs/image', 10 )
         self.depth_publisher = self.create_publisher(Image, '/sensor_msgs/image', 10 )
+
+        #IR publishers
+        self.infra_publisher_1 = self.create_publisher(Image, 'infrared_1',10)
+        self.infra_publisher_2 = self.create_publisher(Image, 'infrared_2',10)
 
     def read_imgs(self):
         
@@ -78,6 +87,12 @@ class Realsense(Node):
         # Convert images to numpy arrays
         self.depth_image = np.asanyarray(depth_frame.get_data())
         self.color_image = np.asanyarray(color_frame.get_data())
+
+        #IR
+        infra_frame_1 = frames.get_infrared_frame(1)
+        infra_frame_2 = frames.get_infrared_frame(2)
+        self.infra_image_1 = np.asanyarray(infra_frame_1.get_data())
+        self.infra_image_2 = np.asanyarray(infra_frame_2.get_data())
 
         # Apply colormap on depth image (image must be converted to 8-bit per pixel first)
         depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(self.depth_image, alpha=0.03), cv2.COLORMAP_JET)
@@ -107,6 +122,22 @@ class Realsense(Node):
         msg_depth.header.stamp = msg_image.header.stamp
         msg_depth.header.frame_id = "depth"
         self.depth_publisher.publish(msg_depth)
+
+        # Utilisation de colormap sur l'image infrared de la Realsense (image convertie en 8-bit par pixel)
+        self.infra_colormap_1 = cv2.applyColorMap(cv2.convertScaleAbs(self.infra_image_1, alpha=0.03), cv2.COLORMAP_JET)
+
+        # Utilisation de colormap sur l'image infrared de la Realsense (image convertie en 8-bit par pixel)
+        self.infra_colormap_2 = cv2.applyColorMap(cv2.convertScaleAbs(self.infra_image_2, alpha=0.03), cv2.COLORMAP_JET)
+
+        msg_infra = self.bridge.cv2_to_imgmsg(self.infra_colormap_1,"bgr8")
+        msg_infra.header.stamp = msg_image.header.stamp
+        msg_infra.header.frame_id = "infrared_1"
+        self.infra_publisher_1.publish(msg_infra)
+
+        msg_infra = self.bridge.cv2_to_imgmsg(self.infra_colormap_2,"bgr8")
+        msg_infra.header.stamp = msg_image.header.stamp
+        msg_infra.header.frame_id = "infrared_2"
+        self.infra_publisher_2.publish(msg_infra)
 
 # Execute the function.
 if __name__ == "__main__":
