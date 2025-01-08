@@ -6,3 +6,5 @@ launch:
   - node:
       pkg: "grp_pibot29"
       exec: "navigation"
+      param:
+        - { name: "topic4cmd", value: '/multi/cmd_nav' }
