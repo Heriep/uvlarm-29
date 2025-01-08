@@ -34,6 +34,11 @@ Use the following to build the packages
 colcon build
 ```
 
+Don't forget to source the setup file if it is not included in your .bashrc file
+```bash
+source /opt/ros/iron/setup.bash
+```
+
 If you want to start the simulation environment :
 ```bash
 ros2 launch grp_pibot29 simulation_launch.yaml
