@@ -6,6 +6,13 @@
 
 Install and configure ROS (Iron Irwini) : [ROS doc](https://docs.ros.org/en/iron/Tutorials/Beginner-CLI-Tools/Configuring-ROS2-Environment.html)
 
+### Python
+
+Install python 3 : 
+```bash
+sudo apt install python3
+```
+
 ### Building tools
 
 The building process rely on colcon and ament-cmake.
