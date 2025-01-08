@@ -1,4 +1,4 @@
-# Projet UV-LARM Groupe OptimusPrime (29)
+# Project UV-LARM Group OptimusPrime (29)
 
 ## Dependencies
 
@@ -29,12 +29,12 @@ colcon build
 
 If you want to start the simulation environment :
 ```bash
-Insert command
+ros2 launch grp_pibot29 simulation_launch.yaml
 ```
 
 Or
 
 If you want to start only the robot nodes :
 ```bash
-Insert command
+ros2 launch grp_pibot29 tbot_launch.yaml
 ```
