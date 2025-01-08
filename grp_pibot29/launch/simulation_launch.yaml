@@ -1,0 +1,4 @@
+launch:
+  - node:
+      pkg: "grp_pibot29"
+      exec: "navigation"

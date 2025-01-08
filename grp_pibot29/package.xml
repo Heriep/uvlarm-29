@@ -7,6 +7,13 @@
   <maintainer email="WORKSTATIONOPTIMUSPRIME@mail.com">o2p9</maintainer>
   <license>TODO: License declaration</license>
 
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>kobuki_ros_interfaces</depend>
+
+  <build_depend>rosidl_default_generators</build_depend>
+  
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <test_depend>ament_lint_auto</test_depend>

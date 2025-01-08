@@ -24,3 +24,9 @@ if(BUILD_TESTING)
 endif()
 
 ament_package()
+
+
+install(DIRECTORY launch DESTINATION share/${PROJECT_NAME}/)
+
+# Python scripts
+install( PROGRAMS scripts/navigation DESTINATION lib/${PROJECT_NAME} )

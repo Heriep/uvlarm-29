@@ -1,0 +1,139 @@
+#!/usr/bin/python3
+
+import rclpy
+from rclpy.node import Node
+from sensor_msgs.msg import LaserScan, PointCloud
+from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Point32
+from kobuki_ros_interfaces.msg import *
+import math
+import time
+
+rosNode= None
+THRESHOLD_DIST = 0.4
+LINEAR_SPEED = 0.35
+ANGULAR_SPEED = 1.0
+LIMITE_ANGLE = 1.3
+
+def infiniteTalk():
+    # Initialize ROS node with ROS client
+    rclpy.init()
+    aNode = Node('basic_move')
+    control = StraightCtrl(aNode)
+    # Start infinite loop
+    rclpy.spin(aNode)
+    # Clean everything and switch the light off
+    aNode.destroy_node()
+    rclpy.shutdown()
+
+class StraightCtrl:
+    def __init__(self, rosNode):
+        self.rosNode = rosNode
+        self.rosNode.create_subscription( LaserScan, 'scan', self.scan_callback, 10)
+        self.rosNode.create_subscription( BumperEvent, '/events/bumper', self.bumper_callback, 10)
+        self.rosNode.create_subscription( WheelDropEvent, '/events/wheel_drop', self.wheeldrop_callback, 10)
+        self.rosNode.create_subscription( ButtonEvent, '/events/button', self.button_callback, 10)
+        self.nav_publisher= rosNode.create_publisher(Twist, '/multi/cmd_nav', 10 )
+        self.led1_publisher= rosNode.create_publisher(Led, '/commands/led1', 10 )
+        self.sound_publisher= rosNode.create_publisher(Sound, '/commands/sound', 10 )
+        self._timer = rosNode.create_timer(0.1, self.control_callback)
+        self._obstacle_left = False
+        self._obstacle_right = False
+        self.angle_mid = 0.0
+        self.bumper = False
+        self.wheeldrop = False
+        self.straight_velocity = 0
+        led1 = Led()
+        led1.value = 0
+        self.led1_publisher.publish(led1)
+
+
+    def control_callback(self):
+        velocity = Twist()
+        # Feed Twist velocity values
+        self.straight_velocity = ramp(self.straight_velocity, LINEAR_SPEED, 0.05)
+        velocity.linear.x = self.straight_velocity
+        velocity.linear.y = 0.0
+        velocity.linear.z = 0.0
+
+        velocity.angular.x = 0.0
+        velocity.angular.y = 0.0
+        velocity.angular.z = 0.0
+
+        if self._obstacle_right:
+            velocity.linear.x = 0.0
+            velocity.angular.z = ANGULAR_SPEED
+        elif self._obstacle_left:
+            velocity.linear.x = 0.0
+            velocity.angular.z = -ANGULAR_SPEED
+        
+        if self._obstacle_right and self._obstacle_left:
+            velocity.linear.x = 0.0
+            velocity.angular.z = -2 * ANGULAR_SPEED
+
+        if self.bumper or self.wheeldrop:
+            velocity.linear.x = 0.0
+            velocity.angular.z = 0.0
+
+        self.straight_velocity = velocity.linear.x
+
+        # Publish 
+        self.nav_publisher.publish(velocity)
+
+    def scan_callback(self, scanMsg):
+        self._obstacle_left = False
+        self._obstacle_right = False
+        self.angle_mid = ( scanMsg.angle_max + scanMsg.angle_min ) / 2
+        angle = scanMsg.angle_min
+        for aDistance in scanMsg.ranges :
+            if 0.2 < aDistance and aDistance < 5.0 and (scanMsg.angle_min + LIMITE_ANGLE <= angle <= scanMsg.angle_max - LIMITE_ANGLE ) and (angle < self.angle_mid) :
+                if THRESHOLD_DIST >= aDistance:
+                    self._obstacle_right = True
+            if 0.2 < aDistance and aDistance < 5.0 and (scanMsg.angle_min + LIMITE_ANGLE <= angle <= scanMsg.angle_max - LIMITE_ANGLE ) and (angle >= self.angle_mid) :
+                if THRESHOLD_DIST >= aDistance:
+                    self._obstacle_left = True
+
+            angle+= scanMsg.angle_increment
+    
+    def bumper_callback(self, bumperMsg):
+        if bumperMsg.state == 1:
+            self.bumper = True
+            led1 = Led()
+            sound = Sound()
+            led1.value = 3
+            sound.value = 1
+            self.led1_publisher.publish(led1)
+            self.sound_publisher.publish(sound)
+
+    def wheeldrop_callback(self, wheelMsg):
+        if wheelMsg.state == 1:
+            self.wheeldrop = True
+            led1 = Led()
+            #sound = Sound()
+            led1.value = 2
+            #sound.value = 4
+            self.led1_publisher.publish(led1)
+            #self.sound_publisher.publish(sound)
+
+    def button_callback(self, buttonMsg):
+        if buttonMsg.state == 1 and buttonMsg.button == 0:
+            self.wheeldrop = False
+            self.bumper = False
+            led1 = Led()
+            led1.value = 0
+            self.led1_publisher.publish(led1)
+
+
+
+def ramp(base, target, step):
+    if base < target:
+        return base+step
+    elif base > target:
+        return base-step
+    else:
+        return base
+
+
+# Execute the function.
+if __name__ == "__main__":
+    infiniteTalk()
