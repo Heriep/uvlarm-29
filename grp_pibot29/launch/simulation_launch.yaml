@@ -1,4 +1,10 @@
 launch:
+  - include:
+      file: "$(find-pkg-share tbot_sim)/launch/challenge-1.launch.py"
+  - node:
+      pkg: "rviz2"
+      exec: "rviz2"
+      args: "-d $(find-pkg-share grp_pibot29)/config/config_rviz2.rviz"
   - node:
       pkg: "grp_pibot29"
       exec: "navigation"

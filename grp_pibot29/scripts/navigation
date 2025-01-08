@@ -13,7 +13,7 @@ rosNode= None
 THRESHOLD_DIST = 0.4
 LINEAR_SPEED = 0.35
 ANGULAR_SPEED = 1.0
-LIMITE_ANGLE = 1.3
+LIMITE_ANGLE = 1.1
 
 def infiniteTalk():
     # Initialize ROS node with ROS client
