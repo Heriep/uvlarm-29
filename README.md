@@ -43,6 +43,7 @@ If you want to start the simulation environment :
 ```bash
 ros2 launch grp_pibot29 simulation_launch.yaml
 ```
+(make sure you have the tsim package in your ros workspace)
 
 Or
 
