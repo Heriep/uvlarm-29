@@ -13,6 +13,22 @@ Install python 3 :
 sudo apt install python3
 ```
 
+### Camera drivers
+
+Install realsense drivers using vcpkg
+```bash
+git clone https://github.com/Microsoft/vcpkg.git
+cd vcpkg
+./bootstrap-vcpkg.sh
+./vcpkg integrate install
+./vcpkg install realsense2
+```
+
+Install the python module
+```bash
+pip install pyrealsense2
+```
+
 ### Building tools
 
 The building process rely on colcon and ament-cmake.
