@@ -8,6 +8,8 @@ from std_msgs.msg import String
 import numpy as np
 import math
 import cv2,time
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
 
 def infiniteTalk():
     # Initialize ROS node with ROS client
@@ -25,12 +27,16 @@ class Vision:
         self.rosNode = rosNode
         self.detection_publisher = rosNode.create_publisher(String, 'detection', 10 )
         self.sound_publisher= rosNode.create_publisher(Sound, '/commands/sound', 10 )
+        self.image_publisher = rosNode.create_publisher(Image, '/sensor_msgs/image', 10 )
         self._timer = rosNode.create_timer(0.1, self.vision_callback)
 
         # Configure depth and color streams
         self.pipeline = rs.pipeline()
         self.config = rs.config()
         self.colorizer = rs.colorizer()
+
+        # Create bridge
+        self.bridge=CvBridge()
 
         self.config.enable_stream(rs.stream.color, 848, 480, rs.format.bgr8, 30)
         self.config.enable_stream(rs.stream.depth, 848, 480, rs.format.z16, 30)
@@ -66,8 +72,6 @@ class Vision:
         self.detected = False
         self.previous_detected = False
         self.number_detected = 0
-
-        cv2.namedWindow('Camera')
     
     def __del__(self): 
         self.pipeline.stop()
@@ -109,9 +113,6 @@ class Vision:
             dx ,dy, dz = rs.rs2_deproject_pixel_to_point(color_intrin, [x,y], depth)
             distance = math.sqrt(((dx)**2) + ((dy)**2) + ((dz)**2))
 
-            #print("Distance from camera to pixel:", distance)
-            #print("Z-depth from camera surface to pixel surface:", depth)
-
             mask=cv2.inRange(color_image, self.lo, self.hi)
             mask=cv2.erode(mask, self.kernel, iterations=1)
             mask=cv2.dilate(mask, self.kernel, iterations=1)
@@ -119,7 +120,7 @@ class Vision:
 
             # Detection of the target
             pixel_count = np.sum(mask)
-            if pixel_count > 250000:
+            if pixel_count > 100000:
                 self.detected = True
             else:
                 self.detected = False
@@ -137,9 +138,10 @@ class Vision:
             image2=cv2.bitwise_and(color_image_bgr, color_image_bgr, mask= mask)
             cv2.putText(color_image_bgr, "Couleur: {:d}".format(self.color), (10, 30), cv2.FONT_HERSHEY_DUPLEX, 1, self.color_info, 1, cv2.LINE_AA)
 
-            cv2.imshow('Camera', color_image_bgr)
-            cv2.imshow('image2', image2)
-            cv2.imshow('Mask', mask)
+            msg_image = self.bridge.cv2_to_imgmsg(image2,"bgr8")
+            msg_image.header.stamp = self.rosNode.get_clock().now().to_msg()
+            msg_image.header.frame_id = "image"
+            self.image_publisher.publish(msg_image)
 
             if cv2.waitKey(1)&0xFF==ord('q'):
                 break

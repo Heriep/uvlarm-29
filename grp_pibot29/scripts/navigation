@@ -46,7 +46,7 @@ class StraightCtrl:
         self.nav_publisher= rosNode.create_publisher(Twist, self.param_node, 10 )
         self.led1_publisher= rosNode.create_publisher(Led, '/commands/led1', 10 )
         self.sound_publisher= rosNode.create_publisher(Sound, '/commands/sound', 10 )
-        self._timer = rosNode.create_timer(0.1, self.control_callback)
+        self._timer = rosNode.create_timer(0.005, self.control_callback)
         self._obstacle_left = False
         self._obstacle_right = False
         self.angle_mid = 0.0
@@ -64,10 +64,10 @@ class StraightCtrl:
         self.THRESHOLD_DIST = self.rosNode.get_parameter( 'threshold_dist' ).value
         self.ANGULAR_SPEED = self.rosNode.get_parameter( 'angular_speed' ).value
         self.LIMITE_ANGLE = self.rosNode.get_parameter( 'limite_angle' ).value
-        
+
         velocity = Twist()
         # Feed Twist velocity values
-        self.straight_velocity = ramp(self.straight_velocity, self.LINEAR_SPEED, 0.05)
+        self.straight_velocity = ramp(self.straight_velocity, self.LINEAR_SPEED, 0.0025)
         velocity.linear.x = self.straight_velocity
         velocity.linear.y = 0.0
         velocity.linear.z = 0.0
