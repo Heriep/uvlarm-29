@@ -24,7 +24,7 @@ cd vcpkg
 ./vcpkg install realsense2
 ```
 
-Install the python module
+Install the python module using pip
 ```bash
 pip install pyrealsense2
 ```
