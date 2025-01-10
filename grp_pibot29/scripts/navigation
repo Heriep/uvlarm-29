@@ -6,8 +6,6 @@ from sensor_msgs.msg import LaserScan, PointCloud
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import Point32
 from kobuki_ros_interfaces.msg import *
-import math
-import time
 
 rosNode= None
 THRESHOLD_DIST = 0.4
@@ -29,11 +27,13 @@ def infiniteTalk():
 class StraightCtrl:
     def __init__(self, rosNode):
         self.rosNode = rosNode
+        rosNode.declare_parameter( 'topic4cmd', '' )
+        self.param_node = self.rosNode.get_parameter( 'topic4cmd' ).value
         self.rosNode.create_subscription( LaserScan, 'scan', self.scan_callback, 10)
         self.rosNode.create_subscription( BumperEvent, '/events/bumper', self.bumper_callback, 10)
         self.rosNode.create_subscription( WheelDropEvent, '/events/wheel_drop', self.wheeldrop_callback, 10)
         self.rosNode.create_subscription( ButtonEvent, '/events/button', self.button_callback, 10)
-        self.nav_publisher= rosNode.create_publisher(Twist, '/multi/cmd_nav', 10 )
+        self.nav_publisher= rosNode.create_publisher(Twist, self.param_node, 10 )
         self.led1_publisher= rosNode.create_publisher(Led, '/commands/led1', 10 )
         self.sound_publisher= rosNode.create_publisher(Sound, '/commands/sound', 10 )
         self._timer = rosNode.create_timer(0.1, self.control_callback)
