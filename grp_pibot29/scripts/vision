@@ -12,10 +12,10 @@ import cv2,time
 def infiniteTalk():
     # Initialize ROS node with ROS client
     rclpy.init()
-    aNode = Node('basic_move')
+    aNode = Node('vision')
     control = Vision(aNode)
     # Start infinite loop
-    rclpy.spin(aNode)
+    rclpy.spin_once(aNode)
     # Clean everything and switch the light off
     aNode.destroy_node()
     rclpy.shutdown()
@@ -48,41 +48,36 @@ class Vision:
         self.refTime= time.process_time()
         self.freq= 60
 
+        # self.color = 50
+        # self.range_color = 10
+        rosNode.declare_parameter( 'color', 0 )
+        rosNode.declare_parameter( 'range_color', 0 )
 
-        def souris(event, x, y, flags, param):
-            global lo, hi, color
+        self.color = self.rosNode.get_parameter( 'color' ).value
+        self.range_color = self.rosNode.get_parameter( 'range_color' ).value
 
-            if event==cv2.EVENT_LBUTTONDOWN:
-                if color>5:
-                    color-=1
+        self.lo=np.array([self.color-self.range_color, 50, 50])
+        self.hi=np.array([self.color+self.range_color, 255, 255])
 
-            if event==cv2.EVENT_RBUTTONDOWN:
-                if color<250:
-                    color+=1
+        self.color_info=(0, 0, 255)
 
-            lo[0]=color-10
-            hi[0]=color+10
+        self.kernel = np.ones((5, 5), np.uint8)
 
-        color=50
-
-        lo=np.array([color-10, 50, 50])
-        hi=np.array([color+10, 255, 255])
-
-        color_info=(0, 0, 255)
-
-        kernel = np.ones((5, 5), np.uint8)
-
-        detected = False
-        previous_detected = False
-        number_detected = 0
+        self.detected = False
+        self.previous_detected = False
+        self.number_detected = 0
 
         cv2.namedWindow('Camera')
-        cv2.setMouseCallback('Camera', souris)
     
     def __del__(self): 
         self.pipeline.stop()
 
     def vision_callback(self):
+        self.color = self.rosNode.get_parameter( 'color' ).value
+        self.range_color = self.rosNode.get_parameter( 'range_color' ).value
+
+        self.lo=np.array([self.color-self.range_color, 50, 50])
+        self.hi=np.array([self.color+self.range_color, 255, 255])
         while True:
             # This call waits until a new coherent set of frames is available on a device
             frames = self.pipeline.wait_for_frames()
@@ -117,7 +112,7 @@ class Vision:
             #print("Distance from camera to pixel:", distance)
             #print("Z-depth from camera surface to pixel surface:", depth)
 
-            mask=cv2.inRange(color_image, lo, hi)
+            mask=cv2.inRange(color_image, self.lo, self.hi)
             mask=cv2.erode(mask, self.kernel, iterations=1)
             mask=cv2.dilate(mask, self.kernel, iterations=1)
             mask=cv2.medianBlur(mask, 5)
@@ -125,22 +120,22 @@ class Vision:
             # Detection of the target
             pixel_count = np.sum(mask)
             if pixel_count > 250000:
-                detected = True
+                self.detected = True
             else:
-                detected = False
-                number_detected = 0
-            if detected == True and previous_detected == True:
-                number_detected += 1
-            if number_detected == 10:
+                self.detected = False
+                self.number_detected = 0
+            if self.detected == True and self.previous_detected == True:
+                self.number_detected += 1
+            if self.number_detected == 10:
                 detection = String()
-                detection.value = "Detected"
+                detection.data = "Detected"
                 sound = Sound()
                 sound.value = 0
                 self.detection_publisher.publish(detection)
                 self.sound_publisher.publish(sound)
 
             image2=cv2.bitwise_and(color_image_bgr, color_image_bgr, mask= mask)
-            cv2.putText(color_image_bgr, "Couleur: {:d}".format(color), (10, 30), cv2.FONT_HERSHEY_DUPLEX, 1, self.color_info, 1, cv2.LINE_AA)
+            cv2.putText(color_image_bgr, "Couleur: {:d}".format(self.color), (10, 30), cv2.FONT_HERSHEY_DUPLEX, 1, self.color_info, 1, cv2.LINE_AA)
 
             cv2.imshow('Camera', color_image_bgr)
             cv2.imshow('image2', image2)
@@ -150,11 +145,15 @@ class Vision:
                 break
 
             # Frequency:
-            if count == 10 :
+            if self.count == 10 :
                 newTime= time.process_time()
-                freq= 10/((newTime-refTime))
-                refTime= newTime
-                count= 0
-            count+= 1
+                self.freq= 10/((newTime-self.refTime))
+                self.refTime= newTime
+                self.count= 0
+            self.count+= 1
 
-            previous_detected = detected
+            self.previous_detected = self.detected
+
+# Execute the function.
+if __name__ == "__main__":
+    infiniteTalk()

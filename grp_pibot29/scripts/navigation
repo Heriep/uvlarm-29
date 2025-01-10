@@ -8,10 +8,10 @@ from geometry_msgs.msg import Point32
 from kobuki_ros_interfaces.msg import *
 
 rosNode= None
-THRESHOLD_DIST = 0.4
-LINEAR_SPEED = 0.35
-ANGULAR_SPEED = 1.0
-LIMITE_ANGLE = 1.1
+# THRESHOLD_DIST = 0.4
+# LINEAR_SPEED = 0.35
+# ANGULAR_SPEED = 1.0
+# LIMITE_ANGLE = 1.1
 
 def infiniteTalk():
     # Initialize ROS node with ROS client
@@ -28,7 +28,17 @@ class StraightCtrl:
     def __init__(self, rosNode):
         self.rosNode = rosNode
         rosNode.declare_parameter( 'topic4cmd', '' )
+        rosNode.declare_parameter( 'linear_speed', 0.0 )
+        rosNode.declare_parameter( 'threshold_dist', 0.0 )
+        rosNode.declare_parameter( 'angular_speed', 0.0 )
+        rosNode.declare_parameter( 'limite_angle', 0.0 )
         self.param_node = self.rosNode.get_parameter( 'topic4cmd' ).value
+
+        self.LINEAR_SPEED = self.rosNode.get_parameter( 'linear_speed' ).value
+        self.THRESHOLD_DIST = self.rosNode.get_parameter( 'threshold_dist' ).value
+        self.ANGULAR_SPEED = self.rosNode.get_parameter( 'angular_speed' ).value
+        self.LIMITE_ANGLE = self.rosNode.get_parameter( 'limite_angle' ).value
+
         self.rosNode.create_subscription( LaserScan, 'scan', self.scan_callback, 10)
         self.rosNode.create_subscription( BumperEvent, '/events/bumper', self.bumper_callback, 10)
         self.rosNode.create_subscription( WheelDropEvent, '/events/wheel_drop', self.wheeldrop_callback, 10)
@@ -49,9 +59,15 @@ class StraightCtrl:
 
 
     def control_callback(self):
+
+        self.LINEAR_SPEED = self.rosNode.get_parameter( 'linear_speed' ).value
+        self.THRESHOLD_DIST = self.rosNode.get_parameter( 'threshold_dist' ).value
+        self.ANGULAR_SPEED = self.rosNode.get_parameter( 'angular_speed' ).value
+        self.LIMITE_ANGLE = self.rosNode.get_parameter( 'limite_angle' ).value
+        
         velocity = Twist()
         # Feed Twist velocity values
-        self.straight_velocity = ramp(self.straight_velocity, LINEAR_SPEED, 0.05)
+        self.straight_velocity = ramp(self.straight_velocity, self.LINEAR_SPEED, 0.05)
         velocity.linear.x = self.straight_velocity
         velocity.linear.y = 0.0
         velocity.linear.z = 0.0
@@ -62,14 +78,14 @@ class StraightCtrl:
 
         if self._obstacle_right:
             velocity.linear.x = 0.0
-            velocity.angular.z = ANGULAR_SPEED
+            velocity.angular.z = self.ANGULAR_SPEED
         elif self._obstacle_left:
             velocity.linear.x = 0.0
-            velocity.angular.z = -ANGULAR_SPEED
+            velocity.angular.z = -self.ANGULAR_SPEED
         
         if self._obstacle_right and self._obstacle_left:
             velocity.linear.x = 0.0
-            velocity.angular.z = -2 * ANGULAR_SPEED
+            velocity.angular.z = -2 * self.ANGULAR_SPEED
 
         if self.bumper or self.wheeldrop:
             velocity.linear.x = 0.0
@@ -86,11 +102,11 @@ class StraightCtrl:
         self.angle_mid = ( scanMsg.angle_max + scanMsg.angle_min ) / 2
         angle = scanMsg.angle_min
         for aDistance in scanMsg.ranges :
-            if 0.2 < aDistance and aDistance < 5.0 and (scanMsg.angle_min + LIMITE_ANGLE <= angle <= scanMsg.angle_max - LIMITE_ANGLE ) and (angle < self.angle_mid) :
-                if THRESHOLD_DIST >= aDistance:
+            if 0.2 < aDistance and aDistance < 5.0 and (scanMsg.angle_min + self.LIMITE_ANGLE <= angle <= scanMsg.angle_max - self.LIMITE_ANGLE ) and (angle < self.angle_mid) :
+                if self.THRESHOLD_DIST >= aDistance:
                     self._obstacle_right = True
-            if 0.2 < aDistance and aDistance < 5.0 and (scanMsg.angle_min + LIMITE_ANGLE <= angle <= scanMsg.angle_max - LIMITE_ANGLE ) and (angle >= self.angle_mid) :
-                if THRESHOLD_DIST >= aDistance:
+            if 0.2 < aDistance and aDistance < 5.0 and (scanMsg.angle_min + self.LIMITE_ANGLE <= angle <= scanMsg.angle_max - self.LIMITE_ANGLE ) and (angle >= self.angle_mid) :
+                if self.THRESHOLD_DIST >= aDistance:
                     self._obstacle_left = True
 
             angle+= scanMsg.angle_increment

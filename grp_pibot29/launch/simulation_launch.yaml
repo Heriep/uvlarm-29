@@ -10,3 +10,7 @@ launch:
       exec: "navigation"
       param:
         - { name: "topic4cmd", value: 'cmd_vel' }
+        - { name: "linear_speed", value: 0.35 }
+        - { name: "threshold_dist", value: 0.4 }
+        - { name: "angular_speed", value: 1.0}
+        - { name: "limite_angle", value: 1.1}

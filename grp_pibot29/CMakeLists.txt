@@ -32,3 +32,4 @@ install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 
 # Python scripts
 install( PROGRAMS scripts/navigation DESTINATION lib/${PROJECT_NAME} )
+install( PROGRAMS scripts/vision DESTINATION lib/${PROJECT_NAME} )
