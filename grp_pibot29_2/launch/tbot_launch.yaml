@@ -1,0 +1,20 @@
+launch:
+  - node:
+      pkg: "rviz2"
+      exec: "rviz2"
+      args: "-d $(find-pkg-share grp_pibot29)/config/maskcolor_laserscan.rviz"
+  - node:
+      pkg: "grp_pibot29"
+      exec: "navigation"
+      param:
+        - { name: "topic4cmd", value: '/multi/cmd_nav' }
+        - { name: "linear_speed", value: 0.5 }
+        - { name: "threshold_dist", value: 0.4 }
+        - { name: "angular_speed", value: 1.3}
+        - { name: "limite_angle", value: 1.1}
+  - node:
+      pkg: "grp_pibot29"
+      exec: "vision"
+      param:
+        - { name: "color", value: 50}
+        - { name: "range_color", value: 10}   
