@@ -37,11 +37,11 @@ class StraightCtrl:
         self.global_goal.position.x= (float)(1)
         self.global_goal.position.y= (float)(2)
 
-        self.LINEAR_SPEED = 0.4 #self.rosNode.get_parameter( 'linear_speed' ).value
+        self.LINEAR_SPEED = 0.5 #self.rosNode.get_parameter( 'linear_speed' ).value
         self.THRESHOLD_DIST = 0.4 #self.rosNode.get_parameter( 'threshold_dist' ).value
         self.ANGULAR_SPEED = 0.5 #self.rosNode.get_parameter( 'angular_speed' ).value
         self.LIMITE_ANGLE = 1.0 #self.rosNode.get_parameter( 'limite_angle' ).value
-        self.ANGLE_STRAIGHT = 1.0
+        self.ANGLE_STRAIGHT = 0.05
         self.straight_velocity = 0.0
 
         node.create_timer(0.1, self.publish_goal)
@@ -53,7 +53,7 @@ class StraightCtrl:
         try:
             stampedTransform= self.tf_buffer.lookup_transform(
                         self.local_frame,
-                        'odom',
+                        'map',
                         currentTime)
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException, tf2_ros.TransformException) as tex:
             self.rosNode.get_logger().info( f'Could not transform the goal into {self.local_frame}: {tex}')
@@ -62,12 +62,15 @@ class StraightCtrl:
         # Compute goal into local coordinates
         localGoal = tf2_geometry_msgs.do_transform_pose( self.global_goal, stampedTransform )
 
-        print(localGoal.position)
 
+        localGoal_euler_roll, localGoal_euler_pitch, localGoal_euler_yaw = euler_from_quaternion(localGoal.orientation)
+
+        print(localGoal.position)
+        print(localGoal_euler_yaw)
 
         velocity = Twist()
 
-        self.straight_velocity = ramp(self.straight_velocity, self.LINEAR_SPEED, 0.0025)
+        self.straight_velocity = ramp(self.straight_velocity, self.LINEAR_SPEED, 0.025)
         velocity.linear.x = 0.0
         velocity.linear.y = 0.0
         velocity.linear.z = 0.0
@@ -76,17 +79,30 @@ class StraightCtrl:
         velocity.angular.y = 0.0
         velocity.angular.z = 0.0
 
-        if localGoal.position.x < 0 : 
+        if localGoal.position.x < 0 and localGoal.position.x > 0.01: 
             velocity.angular.z = self.ANGULAR_SPEED
+            print("1")
 
         elif localGoal.position.y < -self.ANGLE_STRAIGHT :
-            velocity.angular.z = self.ANGULAR_SPEED
+            velocity.angular.z = -self.ANGULAR_SPEED
+            print("2")
 
         elif self.ANGLE_STRAIGHT < localGoal.position.y :
-            velocity.angular.z = -self.ANGULAR_SPEED
+            velocity.angular.z = self.ANGULAR_SPEED
+            print("3")
 
-        elif localGoal.position.x > 0.03 :
-            velocity.linear.x = 0.3
+        elif localGoal.position.x > 0.01 :
+            velocity.linear.x = self.straight_velocity
+            print("4")
+        
+        elif localGoal_euler_yaw < -0.05 :
+            velocity.angular.z = -self.ANGULAR_SPEED
+            print("5")
+
+        elif localGoal_euler_yaw > 0.05 :
+            velocity.angular.z = self.ANGULAR_SPEED
+            print("6")
+
 
         self.straight_velocity = velocity.linear.x
 
@@ -103,6 +119,30 @@ def ramp(base, target, step):
         return base-step
     else:
         return base
+
+def euler_from_quaternion(quaternion):
+    """
+    Converts quaternion (w in last place) to euler roll, pitch, yaw
+    quaternion = [x, y, z, w]
+    Bellow should be replaced when porting for ROS 2 Python tf_conversions is done.
+    """
+    x = quaternion.x
+    y = quaternion.y
+    z = quaternion.z
+    w = quaternion.w
+
+    sinr_cosp = 2 * (w * x + y * z)
+    cosr_cosp = 1 - 2 * (x * x + y * y)
+    roll = np.arctan2(sinr_cosp, cosr_cosp)
+
+    sinp = 2 * (w * y - z * x)
+    pitch = np.arcsin(sinp)
+
+    siny_cosp = 2 * (w * z + x * y)
+    cosy_cosp = 1 - 2 * (y * y + z * z)
+    yaw = np.arctan2(siny_cosp, cosy_cosp)
+
+    return roll, pitch, yaw
 
 # Execute the function.
 if __name__ == "__main__":
