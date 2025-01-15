@@ -1,0 +1,178 @@
+#!/usr/bin/env python3
+
+import pyrealsense2 as rs
+import rclpy
+from rclpy.node import Node
+from kobuki_ros_interfaces.msg import *
+from std_msgs.msg import String
+import numpy as np
+import math
+import cv2,time
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
+
+from matplotlib import pyplot as plt
+
+def infiniteTalk():
+    # Initialize ROS node with ROS client
+    rclpy.init()
+    aNode = Node('vision')
+    control = Vision(aNode)
+    # Start infinite loop
+    rclpy.spin_once(aNode)
+    # Clean everything and switch the light off
+    aNode.destroy_node()
+    rclpy.shutdown()
+
+class Vision:
+    def __init__(self, rosNode):
+        self.rosNode = rosNode
+        self.detection_publisher = rosNode.create_publisher(String, 'detection', 10 )
+        self.sound_publisher= rosNode.create_publisher(Sound, '/commands/sound', 10 )
+        self.image_publisher = rosNode.create_publisher(Image, '/sensor_msgs/image', 10 )
+        self._timer = rosNode.create_timer(0.1, self.vision_callback)
+
+        # Configure depth and color streams
+        self.pipeline = rs.pipeline()
+        self.config = rs.config()
+        self.colorizer = rs.colorizer()
+
+        # Create bridge
+        self.bridge=CvBridge()
+
+        self.config.enable_stream(rs.stream.color, 848, 480, rs.format.bgr8, 30)
+        self.config.enable_stream(rs.stream.depth, 848, 480, rs.format.z16, 30)
+
+        # Start streaming
+        self.pipeline.start(self.config)
+
+        self.align_to = rs.stream.color
+        self.align = rs.align(self.align_to)
+
+        self.color_info=(0, 0, 255)
+        self.rayon=10
+
+        self.count=1
+        self.refTime= time.process_time()
+        self.freq= 60
+
+        rosNode.declare_parameter( 'color', 0 )
+        rosNode.declare_parameter( 'range_color', 0 )
+
+        self.color = self.rosNode.get_parameter( 'color' ).value
+        self.range_color = self.rosNode.get_parameter( 'range_color' ).value
+
+        self.lo=np.array([self.color-self.range_color, 50, 50])
+        self.hi=np.array([self.color+self.range_color, 255, 255])
+
+        self.color_info=(0, 0, 255)
+
+        self.kernel = np.ones((5, 5), np.uint8)
+
+        self.detected = False
+        self.previous_detected = False
+        self.number_detected = 0
+
+        self.color = 50
+        self.range_color = 10
+    
+    def __del__(self): 
+        self.pipeline.stop()
+
+    def vision_callback(self):
+        # self.color = self.rosNode.get_parameter( 'color' ).value
+        # self.range_color = self.rosNode.get_parameter( 'range_color' ).value
+
+        self.lo=np.array([self.color-self.range_color, 50, 50])
+        self.hi=np.array([self.color+self.range_color, 255, 255])
+        while True:
+            # This call waits until a new coherent set of frames is available on a device
+            frames = self.pipeline.wait_for_frames()
+
+            #Aligning color frame to depth frame
+            aligned_frames =  self.align.process(frames)
+            depth_frame = aligned_frames.get_depth_frame()
+            frame = aligned_frames.get_color_frame()
+
+            if not depth_frame or not frame: continue
+
+            # Two ways to colorized the depth map
+            # first : using colorizer of pyrealsense                
+            colorized_depth = self.colorizer.colorize(depth_frame)
+            depth_colormap = np.asanyarray(colorized_depth.get_data())
+
+            # Get the intrinsic parameters
+            color_intrin = frame.profile.as_video_stream_profile().intrinsics
+
+            color_image_bgr = np.asanyarray(frame.get_data())
+            color_image = cv2.cvtColor(color_image_bgr, cv2.COLOR_BGR2HSV)
+
+            depth_colormap_dim = depth_colormap.shape
+            color_colormap_dim = color_image.shape
+
+            mask=cv2.inRange(color_image, self.lo, self.hi)
+            mask=cv2.erode(mask, self.kernel, iterations=1)
+            mask=cv2.dilate(mask, self.kernel, iterations=1)
+            mask=cv2.medianBlur(mask, 5)
+
+            template = cv2.imread('/home/o2p9/ros_space/grp_pibot29_2/scripts/template_bw.png', cv2.IMREAD_GRAYSCALE)
+            assert template is not None, "file could not be read, check with os.path.exists()"
+            w, h = template.shape[::-1]
+            
+            res = cv2.matchTemplate(mask,template,cv2.TM_CCOEFF_NORMED)
+
+            mini, maxi, loc_mini, loc_maxi = cv2.minMaxLoc(res)
+            threshold = 0.3
+            if maxi >= threshold:
+                x, y = loc_maxi[0], loc_maxi[1]
+                cv2.rectangle(color_image_bgr, loc_maxi, (x + w, y + h), (0,0,255), 2)
+                depth = depth_frame.get_distance(int(x + w/2), int(y + h/2))
+                dx ,dy, dz = rs.rs2_deproject_pixel_to_point(color_intrin, [x,y], depth)
+                distance = math.sqrt(((dx)**2) + ((dy)**2) + ((dz)**2))
+                print(distance)
+
+                cv2.circle(color_image_bgr, (int(x + w/2), int(y + h/2)), 5, (0, 0, 255), 2)
+            
+            cv2.imshow('mask',color_image_bgr)
+            
+            # Detection of the target
+            pixel_count = np.sum(mask)
+            if pixel_count > 100000:
+                self.detected = True
+            else:
+                self.detected = False
+                self.number_detected = 0
+            if self.detected == True and self.previous_detected == True:
+                self.number_detected += 1
+            if self.number_detected == 10:
+                detection = String()
+                detection.data = "Detected"
+                sound = Sound()
+                sound.value = 0
+                self.detection_publisher.publish(detection)
+                self.sound_publisher.publish(sound)
+
+            image2=cv2.bitwise_and(color_image_bgr, color_image_bgr, mask= mask)
+            cv2.putText(color_image_bgr, "Couleur: {:d}".format(self.color), (10, 30), cv2.FONT_HERSHEY_DUPLEX, 1, self.color_info, 1, cv2.LINE_AA)
+
+            msg_image = self.bridge.cv2_to_imgmsg(color_image_bgr,"bgr8")
+            msg_image.header.stamp = self.rosNode.get_clock().now().to_msg()
+            msg_image.header.frame_id = "image"
+            self.image_publisher.publish(msg_image)
+
+            if cv2.waitKey(1)&0xFF==ord('q'):
+                break
+
+            # Frequency:
+            if self.count == 10 :
+                newTime= time.process_time()
+                self.freq= 10/((newTime-self.refTime))
+                self.refTime= newTime
+                self.count= 0
+            self.count+= 1
+
+            self.previous_detected = self.detected
+
+# Execute the function.
+if __name__ == "__main__":
+    infiniteTalk()
