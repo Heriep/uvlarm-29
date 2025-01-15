@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+
+import pyrealsense2 as rs
+import rclpy
+from rclpy.node import Node
+from kobuki_ros_interfaces.msg import *
+from std_msgs.msg import String, ColorRGBA, Float32
+from visualization_msgs.msg import Marker
+from sensor_msgs.msg import Image
+from tf2_ros import *
+from tf2_geometry_msgs import *
+import numpy as np
+import cv2,time, math
+from cv_bridge import CvBridge
+
+from matplotlib import pyplot as plt
+
+def infiniteTalk():
+    # Initialize ROS node with ROS client
+    rclpy.init()
+    aNode = Node('publish_markers')
+    control = PublishMarker(aNode)
+    # Start infinite loop
+    rclpy.spin(aNode)
+    # Clean everything and switch the light off
+    aNode.destroy_node()
+    rclpy.shutdown()
+
+class PublishMarker:
+    def __init__(self, rosNode):
+        self.rosNode = rosNode
+        # Transform tool:
+        self.tf_buffer = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self.rosNode)
+
+        self.marker_publisher = rosNode.create_publisher(Marker, 'marker', 10 )
+        self.rosNode.create_subscription( Float32, 'distance', self.publish_marker, 10)
+        self.camera_pose = Pose()
+        self.markers = []
+        self.DISTANCE = 0.2
+        
+    def publish_marker(self, distance_msg):
+
+        self.camera_pose.position.x = (distance_msg.data**2 - 0.04)**0.5
+        self.camera_pose.position.y = 0
+
+        currentTime= rclpy.time.Time()
+        # Get Transformation
+        try:
+            stampedTransform= self.tf_buffer.lookup_transform(
+                        'laser_link',
+                        'odom',
+                        currentTime)
+        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException, tf2_ros.TransformException) as tex:
+            self.rosNode.get_logger().info( f'Could not transform: {tex}')
+            return
+        
+        # Compute goal into local coordinates
+        self.map_pose = tf2_geometry_msgs.do_transform_pose( self.camera_pose, stampedTransform )
+        for pt in self.markers:
+            if euclidean_distance((self.map_pose.position.x, self.map_pose.position.y), pt) <= self.DISTANCE:
+                return
+            
+        self.markers.append((self.map_pose.position.x, self.map_pose.position.y))
+        marker = Marker()
+        marker.color = ColorRGBA(0.0, 1.0, 0.0, 1.0)
+        marker.lifetime = 0
+        marker.pose = self.map_pose
+        marker.action = 0
+        marker.header.frame_id = 'odom'
+        self.marker_publisher.publish(self.marker)
+
+def euclidean_distance(a, b):
+    return ((a[0]-b[0])**2+(a[1]-b[1])**2)**0.5
+
+# Execute the function.
+if __name__ == "__main__":
+    infiniteTalk()

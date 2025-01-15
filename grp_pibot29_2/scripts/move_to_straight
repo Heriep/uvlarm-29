@@ -53,7 +53,7 @@ class StraightCtrl:
         try:
             stampedTransform= self.tf_buffer.lookup_transform(
                         self.local_frame,
-                        'map',
+                        'odom',
                         currentTime)
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException, tf2_ros.TransformException) as tex:
             self.rosNode.get_logger().info( f'Could not transform the goal into {self.local_frame}: {tex}')
