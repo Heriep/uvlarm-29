@@ -12,6 +12,8 @@ import numpy as np
 import cv2,time, math
 from cv_bridge import CvBridge
 
+import matplotlib.pyplot as plt
+
 def infiniteTalk():
     # Initialize ROS node with ROS client
     rclpy.init()
@@ -64,7 +66,9 @@ class Vision:
         self.color = self.rosNode.get_parameter( 'color' ).value
         self.range_color = self.rosNode.get_parameter( 'range_color' ).value
 
-        self.lo=np.array([self.color-self.range_color, 50, 50])
+        self.color = 65
+        self.range_color = 15
+        self.lo=np.array([self.color-self.range_color, 0, 0])
         self.hi=np.array([self.color+self.range_color, 255, 255])
 
         self.color_info=(0, 0, 255)
@@ -74,9 +78,6 @@ class Vision:
         self.detected = False
         self.previous_detected = False
         self.number_detected = 0
-
-        self.color = 80
-        self.range_color = 10
     
     def __del__(self):
         self.pipeline.stop()
@@ -109,6 +110,43 @@ class Vision:
             color_image_bgr = np.asanyarray(frame.get_data())
             color_image = cv2.cvtColor(color_image_bgr, cv2.COLOR_BGR2HSV)
 
+            # Appliquer l'égalisation de l'histogramme sur le canal V (luminosité)
+            # h, s, v = cv2.split(color_image)
+            # s = cv2.equalizeHist(s)
+            # v = cv2.equalizeHist(v)
+            # color_image = cv2.merge([h, s, v])
+
+            # color_image_back_to_bgr = cv2.cvtColor(color_image, cv2.COLOR_HSV2BGR)
+
+            normalized_image = cv2.normalize(color_image, None, 0, 255, cv2.NORM_MINMAX)
+            image = cv2.cvtColor(normalized_image, cv2.COLOR_HSV2BGR)
+
+            cv2.imshow("test", image)
+
+            # hist_h = cv2.calcHist([h], [0], None, [256], [0, 256])
+            # hist_s = cv2.calcHist([s], [0], None, [256], [0, 256])
+            # hist_v = cv2.calcHist([v], [0], None, [256], [0, 256])
+
+            # plt.figure(figsize=(10, 6))
+
+            # plt.subplot(131)
+            # plt.plot(hist_h, color='r')
+            # plt.title('Histogramme du canal H (Teinte)')
+            # plt.xlim([0, 256])
+
+            # plt.subplot(132)
+            # plt.plot(hist_s, color='g')
+            # plt.title('Histogramme du canal S (Saturation)')
+            # plt.xlim([0, 256])
+
+            # plt.subplot(133)
+            # plt.plot(hist_v, color='b')
+            # plt.title('Histogramme du canal V (Valeur)')
+            # plt.xlim([0, 256])
+
+            # plt.tight_layout()
+            # plt.show()
+
             depth_colormap_dim = depth_colormap.shape
             color_colormap_dim = color_image.shape
 
@@ -122,6 +160,22 @@ class Vision:
             w, h = template.shape[::-1]
             
             res = cv2.matchTemplate(mask,template,cv2.TM_CCOEFF_NORMED)
+
+
+            # Trouver les contours du masque
+            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+            if (len(contours)>=1):
+                # Obtenir le rectangle englobant (bounding box)
+                c_x, c_y, c_w, c_h = cv2.boundingRect(contours[0])
+                # Extraire la ROI
+                roi = color_image_bgr[c_y:c_y+c_h, c_x:c_x+c_w]
+                # Afficher ou sauvegarder la ROI
+                cv2.imshow('Region d\'interet', roi)
+                if (c_w/c_h) > 0.5:
+                    print("detected")
+                else:
+                    print("\n")
 
             mini, maxi, loc_mini, loc_maxi = cv2.minMaxLoc(res)
             threshold = 0.3
@@ -183,29 +237,6 @@ class Vision:
 
 def euclidean_distance(a, b):
     return ((a[0]-b[0])**2+(a[1]-b[1])**2)**0.5
-
-def newton_raphson(a, x, y0, tol = 1e-6, max_iter=100):
-    def f(y):
-        return math.sin(y/a) -y/x
-    def f_prime(y):
-        return (1/a)*math.cos(y/a) -1/x
-    
-    y = y0
-    for i in range(max_iter):
-        f_y = f(y)
-        f_prime_y = f_prime(y)
-
-        if abs(f_prime_y) < 1e-12:
-            raise ValueError("Dérivée trop proche de 0")
-        
-        y_new = y - f_y /f_prime_y
-
-        if abs(y_new - y) < tol:
-            return y_new
-        
-        y= y_new
-    
-    raise ValueError("Pas de convergence")
 
 # Execute the function.
 if __name__ == "__main__":
