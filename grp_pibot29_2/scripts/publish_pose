@@ -4,16 +4,13 @@ import pyrealsense2 as rs
 import rclpy
 from rclpy.node import Node
 from kobuki_ros_interfaces.msg import *
-from std_msgs.msg import String, ColorRGBA, Float32
-from visualization_msgs.msg import Marker
+from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from tf2_ros import *
 from tf2_geometry_msgs import *
 import numpy as np
 import cv2,time, math
 from cv_bridge import CvBridge
-
-from matplotlib import pyplot as plt
 
 def infiniteTalk():
     # Initialize ROS node with ROS client
@@ -32,10 +29,9 @@ class Vision:
 
         self.rosNode = rosNode
 
-        self.detection_publisher = rosNode.create_publisher(String, 'detection', 10 )
         self.sound_publisher= rosNode.create_publisher(Sound, '/commands/sound', 10 )
         self.image_publisher = rosNode.create_publisher(Image, '/sensor_msgs/image', 10 )
-        self.distance_publisher = rosNode.create_publisher(Float32, 'distance', 10 )
+        self.distance_publisher = rosNode.create_publisher(Pose, 'distance', 10 )
         self._timer = rosNode.create_timer(0.1, self.vision_callback)
 
         # Configure depth and color streams
@@ -79,7 +75,7 @@ class Vision:
         self.previous_detected = False
         self.number_detected = 0
 
-        self.color = 50
+        self.color = 80
         self.range_color = 10
     
     def __del__(self):
@@ -132,33 +128,37 @@ class Vision:
             if maxi >= threshold:
                 x, y = loc_maxi[0], loc_maxi[1]
                 cv2.rectangle(color_image_bgr, loc_maxi, (x + w, y + h), (0,0,255), 2)
+                cv2.circle(color_image_bgr, (int(x + w/2), int(y + h/2)), 5, (0, 0, 255), 2)
                 depth = depth_frame.get_distance(int(x + w/2), int(y + h/2))
                 dx ,dy, dz = rs.rs2_deproject_pixel_to_point(color_intrin, [x,y], depth)
-                distance = Float32()
-                distance.data = math.sqrt(((dx)**2) + ((dy)**2) + ((dz)**2))
 
-                self.distance_publisher.publish(distance)
-
-                cv2.circle(color_image_bgr, (int(x + w/2), int(y + h/2)), 5, (0, 0, 255), 2)
-            
-            cv2.imshow('mask',color_image_bgr)
-            
-            # Detection of the target
-            pixel_count = np.sum(mask)
-            if pixel_count > 100000:
-                self.detected = True
+                a = 424/(35*3.14159/180)
+                theta = -(int(x + w/2) - 424)/a
+                distance = math.sqrt(((dx)**2) + ((dy)**2) + ((dz)**2))
+                pose = Pose()
+                if distance**2<0.04:
+                    pose.position.x = (float)(0)
+                else:
+                    pose.position.x = (float)((distance**2 - 0.04)**0.5)
+                pose.position.y = (float)(distance*math.sin(theta))
+                pose.position.z = (float)(0.0)
+                
+                if distance>=0.04:
+                    self.detected = True
             else:
                 self.detected = False
                 self.number_detected = 0
+
             if self.detected == True and self.previous_detected == True:
                 self.number_detected += 1
             if self.number_detected == 10:
-                detection = String()
-                detection.data = "Detected"
                 sound = Sound()
                 sound.value = 0
-                self.detection_publisher.publish(detection)
-                self.sound_publisher.publish(sound)
+                self.distance_publisher.publish(pose) 
+                #self.sound_publisher.publish(sound)
+            
+            cv2.imshow('mask',color_image_bgr)
+            cv2.imshow('mask2',mask)
 
             image2=cv2.bitwise_and(color_image_bgr, color_image_bgr, mask= mask)
             cv2.putText(color_image_bgr, "Couleur: {:d}".format(self.color), (10, 30), cv2.FONT_HERSHEY_DUPLEX, 1, self.color_info, 1, cv2.LINE_AA)
@@ -183,6 +183,29 @@ class Vision:
 
 def euclidean_distance(a, b):
     return ((a[0]-b[0])**2+(a[1]-b[1])**2)**0.5
+
+def newton_raphson(a, x, y0, tol = 1e-6, max_iter=100):
+    def f(y):
+        return math.sin(y/a) -y/x
+    def f_prime(y):
+        return (1/a)*math.cos(y/a) -1/x
+    
+    y = y0
+    for i in range(max_iter):
+        f_y = f(y)
+        f_prime_y = f_prime(y)
+
+        if abs(f_prime_y) < 1e-12:
+            raise ValueError("Dérivée trop proche de 0")
+        
+        y_new = y - f_y /f_prime_y
+
+        if abs(y_new - y) < tol:
+            return y_new
+        
+        y= y_new
+    
+    raise ValueError("Pas de convergence")
 
 # Execute the function.
 if __name__ == "__main__":
