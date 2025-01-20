@@ -110,42 +110,10 @@ class Vision:
             color_image_bgr = np.asanyarray(frame.get_data())
             color_image = cv2.cvtColor(color_image_bgr, cv2.COLOR_BGR2HSV)
 
-            # Appliquer l'égalisation de l'histogramme sur le canal V (luminosité)
-            # h, s, v = cv2.split(color_image)
-            # s = cv2.equalizeHist(s)
-            # v = cv2.equalizeHist(v)
-            # color_image = cv2.merge([h, s, v])
-
-            # color_image_back_to_bgr = cv2.cvtColor(color_image, cv2.COLOR_HSV2BGR)
-
             normalized_image = cv2.normalize(color_image, None, 0, 255, cv2.NORM_MINMAX)
             image = cv2.cvtColor(normalized_image, cv2.COLOR_HSV2BGR)
 
             cv2.imshow("test", image)
-
-            # hist_h = cv2.calcHist([h], [0], None, [256], [0, 256])
-            # hist_s = cv2.calcHist([s], [0], None, [256], [0, 256])
-            # hist_v = cv2.calcHist([v], [0], None, [256], [0, 256])
-
-            # plt.figure(figsize=(10, 6))
-
-            # plt.subplot(131)
-            # plt.plot(hist_h, color='r')
-            # plt.title('Histogramme du canal H (Teinte)')
-            # plt.xlim([0, 256])
-
-            # plt.subplot(132)
-            # plt.plot(hist_s, color='g')
-            # plt.title('Histogramme du canal S (Saturation)')
-            # plt.xlim([0, 256])
-
-            # plt.subplot(133)
-            # plt.plot(hist_v, color='b')
-            # plt.title('Histogramme du canal V (Valeur)')
-            # plt.xlim([0, 256])
-
-            # plt.tight_layout()
-            # plt.show()
 
             depth_colormap_dim = depth_colormap.shape
             color_colormap_dim = color_image.shape
@@ -159,56 +127,59 @@ class Vision:
             assert template is not None, "file could not be read, check with os.path.exists()"
             w, h = template.shape[::-1]
             
-            res = cv2.matchTemplate(mask,template,cv2.TM_CCOEFF_NORMED)
-
+            res = []
 
             # Trouver les contours du masque
             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-            if (len(contours)>=1):
+            for i in range(len(contours)):
                 # Obtenir le rectangle englobant (bounding box)
-                c_x, c_y, c_w, c_h = cv2.boundingRect(contours[0])
-                # Extraire la ROI
-                roi = color_image_bgr[c_y:c_y+c_h, c_x:c_x+c_w]
-                # Afficher ou sauvegarder la ROI
-                cv2.imshow('Region d\'interet', roi)
-                if (c_w/c_h) > 0.5:
-                    print("detected")
-                else:
-                    print("\n")
+                c_x, c_y, c_w, c_h = cv2.boundingRect(contours[i])
 
-            mini, maxi, loc_mini, loc_maxi = cv2.minMaxLoc(res)
-            threshold = 0.3
-            if maxi >= threshold:
-                x, y = loc_maxi[0], loc_maxi[1]
-                cv2.rectangle(color_image_bgr, loc_maxi, (x + w, y + h), (0,0,255), 2)
-                cv2.circle(color_image_bgr, (int(x + w/2), int(y + h/2)), 5, (0, 0, 255), 2)
-                depth = depth_frame.get_distance(int(x + w/2), int(y + h/2))
-                dx ,dy, dz = rs.rs2_deproject_pixel_to_point(color_intrin, [x,y], depth)
+                if (c_w/c_h) > 0.5 and c_w > 15 and c_h > 15:
+                    # Extraire la ROI
+                    roi = color_image_bgr[c_y:c_y+c_h, c_x:c_x+c_w]
 
-                a = 424/(35*3.14159/180)
-                theta = -(int(x + w/2) - 424)/a
-                distance = math.sqrt(((dx)**2) + ((dy)**2) + ((dz)**2))
-                pose = Pose()
-                if distance**2<0.04:
-                    pose.position.x = (float)(0)
-                else:
-                    pose.position.x = (float)((distance**2 - 0.04)**0.5)
-                pose.position.y = (float)(distance*math.sin(theta))
-                pose.position.z = (float)(0.0)
-                
-                if distance>=0.04:
-                    self.detected = True
-            else:
-                self.detected = False
+                    roi_resized = cv2.resize(roi, None, fx = w/c_w, fy = w/c_w)
+                    res.append(cv2.matchTemplate(roi_resized,template,cv2.TM_CCOEFF_NORMED))
+
+                    # Afficher la ROI
+                    cv2.imshow('Region d\'interet', roi_resized)
+            
+            self.detected = False
+
+            for i in range(len(contours)):
+                mini, maxi, loc_mini, loc_maxi = cv2.minMaxLoc(res[i])
+                threshold = 0.3
+                if maxi >= threshold:
+                    x, y = loc_maxi[0], loc_maxi[1]
+                    cv2.rectangle(color_image_bgr, loc_maxi, (x + w, y + h), (0,0,255), 2)
+                    cv2.circle(color_image_bgr, (int(x + w/2), int(y + h/2)), 5, (0, 0, 255), 2)
+                    depth = depth_frame.get_distance(int(x + w/2), int(y + h/2))
+                    dx ,dy, dz = rs.rs2_deproject_pixel_to_point(color_intrin, [x,y], depth)
+
+                    a = 424/(35*3.14159/180)
+                    theta = -(int(x + w/2) - 424)/a
+                    distance = math.sqrt(((dx)**2) + ((dy)**2) + ((dz)**2))
+                    pose = Pose()
+                    if distance**2<0.04:
+                        pose.position.x = (float)(0)
+                    else:
+                        pose.position.x = (float)((distance**2 - 0.04)**0.5)
+                    pose.position.y = (float)(distance*math.sin(theta))
+                    pose.position.z = (float)(0.0)
+                    
+                    if distance>=0.04:
+                        self.distance_publisher.publish(pose) 
+                        self.detected = True
+
+            if not self.detected:
                 self.number_detected = 0
-
-            if self.detected == True and self.previous_detected == True:
+            if self.detected and self.previous_detected:
                 self.number_detected += 1
             if self.number_detected == 10:
                 sound = Sound()
                 sound.value = 0
-                self.distance_publisher.publish(pose) 
                 #self.sound_publisher.publish(sound)
             
             cv2.imshow('mask',color_image_bgr)
