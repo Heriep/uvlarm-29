@@ -113,21 +113,15 @@ class Vision:
             normalized_image = cv2.normalize(color_image, None, 0, 255, cv2.NORM_MINMAX)
             image = cv2.cvtColor(normalized_image, cv2.COLOR_HSV2BGR)
 
-            cv2.imshow("test", image)
-
             depth_colormap_dim = depth_colormap.shape
             color_colormap_dim = color_image.shape
 
             mask=cv2.inRange(color_image, self.lo, self.hi)
             mask=cv2.erode(mask, self.kernel, iterations=1)
-            mask=cv2.dilate(mask, self.kernel, iterations=1)
+            mask=cv2.dilate(mask, self.kernel, iterations=4)
             mask=cv2.medianBlur(mask, 5)
-
-            template = cv2.imread('/home/o2p9/ros_space/grp_pibot29_2/scripts/template_bw.png', cv2.IMREAD_GRAYSCALE)
-            assert template is not None, "file could not be read, check with os.path.exists()"
-            w, h = template.shape[::-1]
             
-            res = []
+            coords = []
 
             # Trouver les contours du masque
             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -136,54 +130,55 @@ class Vision:
                 # Obtenir le rectangle englobant (bounding box)
                 c_x, c_y, c_w, c_h = cv2.boundingRect(contours[i])
 
-                if (c_w/c_h) > 0.5 and c_w > 15 and c_h > 15:
+                if (c_w/c_h) > 0.65 and c_w > 25 and c_h > 25:
                     # Extraire la ROI
                     roi = color_image_bgr[c_y:c_y+c_h, c_x:c_x+c_w]
 
-                    roi_resized = cv2.resize(roi, None, fx = w/c_w, fy = w/c_w)
-                    res.append(cv2.matchTemplate(roi_resized,template,cv2.TM_CCOEFF_NORMED))
+                    roi_resized = cv2.resize(roi, None, fx = 100/c_w, fy = 100/c_w)
+                    coords.append((c_x, c_y, c_w, c_h))
+                    cv2.rectangle(color_image_bgr, (c_x, c_y), (c_x + c_w, c_y + c_h), (0,0,255), 2)
+                    cv2.circle(color_image_bgr, (int(c_x + c_w/2), int(c_y + c_h/2)), 5, (0, 0, 255), 2)
 
                     # Afficher la ROI
                     cv2.imshow('Region d\'interet', roi_resized)
             
             self.detected = False
 
-            for i in range(len(contours)):
-                mini, maxi, loc_mini, loc_maxi = cv2.minMaxLoc(res[i])
-                threshold = 0.3
-                if maxi >= threshold:
-                    x, y = loc_maxi[0], loc_maxi[1]
-                    cv2.rectangle(color_image_bgr, loc_maxi, (x + w, y + h), (0,0,255), 2)
-                    cv2.circle(color_image_bgr, (int(x + w/2), int(y + h/2)), 5, (0, 0, 255), 2)
+            for i in range(len(coords)):
+                x, y, w, h = coords[i]
+
+                if int(x + w/2) < 848 and int(y + h/2) < 480:
                     depth = depth_frame.get_distance(int(x + w/2), int(y + h/2))
                     dx ,dy, dz = rs.rs2_deproject_pixel_to_point(color_intrin, [x,y], depth)
+                else:
+                    dx, dy, dz = 0, 0, 0
 
-                    a = 424/(35*3.14159/180)
-                    theta = -(int(x + w/2) - 424)/a
-                    distance = math.sqrt(((dx)**2) + ((dy)**2) + ((dz)**2))
-                    pose = Pose()
-                    if distance**2<0.04:
-                        pose.position.x = (float)(0)
-                    else:
-                        pose.position.x = (float)((distance**2 - 0.04)**0.5)
-                    pose.position.y = (float)(distance*math.sin(theta))
-                    pose.position.z = (float)(0.0)
-                    
-                    if distance>=0.04:
-                        self.distance_publisher.publish(pose) 
-                        self.detected = True
+                a = 424/(35*3.14159/180)
+                theta = -(int(x + w/2) - 424)/a
+                distance = math.sqrt(((dx)**2) + ((dy)**2) + ((dz)**2))
+                pose = Pose()
+                if distance**2<0.04:
+                    pose.position.x = (float)(0)
+                else:
+                    pose.position.x = (float)((distance**2 - 0.04)**0.5)
+                pose.position.y = (float)(distance*math.sin(theta))
+                pose.position.z = (float)(0.0)
+                
+                if distance>=0.04:
+                    self.detected = True
 
             if not self.detected:
                 self.number_detected = 0
             if self.detected and self.previous_detected:
                 self.number_detected += 1
-            if self.number_detected == 10:
+            if self.number_detected == 30:
                 sound = Sound()
                 sound.value = 0
-                #self.sound_publisher.publish(sound)
+                self.sound_publisher.publish(sound)
+                self.distance_publisher.publish(pose)
             
-            cv2.imshow('mask',color_image_bgr)
-            cv2.imshow('mask2',mask)
+            cv2.imshow('camera',color_image_bgr)
+            cv2.imshow('mask',mask)
 
             image2=cv2.bitwise_and(color_image_bgr, color_image_bgr, mask= mask)
             cv2.putText(color_image_bgr, "Couleur: {:d}".format(self.color), (10, 30), cv2.FONT_HERSHEY_DUPLEX, 1, self.color_info, 1, cv2.LINE_AA)
