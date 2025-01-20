@@ -4,9 +4,8 @@ from tf2_ros import *
 from tf2_geometry_msgs import *
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import LaserScan, PointCloud
 from geometry_msgs.msg import Twist
-from geometry_msgs.msg import Point32
+from nav_msgs.msg import OccupancyGrid
 from kobuki_ros_interfaces.msg import *
 
 def infiniteTalk():
@@ -28,8 +27,13 @@ class StraightCtrl:
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self.rosNode)
 
         self.rosNode.create_subscription( PoseStamped, 'goal_pose', self.update_goal_pose, 10)
+        self.rosNode.create_subscription( OccupancyGrid, 'map', self.update_map, 10)
 
-        self.nav_publisher= self.rosNode.create_publisher(Twist, '/multi/cmd_nav', 10 )
+        # self.nav_publisher= self.rosNode.create_publisher(Twist, '/multi/cmd_nav', 10 )
+        self.nav_publisher= self.rosNode.create_publisher(Twist, 'cmd_vel', 10 )
+
+        self.map = OccupancyGrid()
+        self.pose_on_map = Pose()
 
         # Node Attribute:
         self.local_frame= 'base_link'
@@ -45,6 +49,27 @@ class StraightCtrl:
         self.straight_velocity = 0.0
 
         node.create_timer(0.1, self.publish_goal)
+        node.create_timer(0.1, self.update_self_pose)
+        node.create_timer(10, self.update_goal_pose(self.map))
+    
+    def update_self_pose(self):
+        currentTime= rclpy.time.Time()
+        pose = Pose()
+        pose.position.x = 0
+        pose.position.y = 0
+        pose.position.z = 0
+        # Get Transformation
+        try:
+            stampedTransform= self.tf_buffer.lookup_transform(
+                        'map',
+                        self.local_frame,
+                        currentTime)
+        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException, tf2_ros.TransformException) as tex:
+            self.rosNode.get_logger().info( f'Could not transform the goal into map: {tex}')
+            return
+
+        self.pose_on_map = tf2_geometry_msgs.do_transform_pose(pose, stampedTransform )
+        
 
     def publish_goal(self):
 
@@ -108,10 +133,40 @@ class StraightCtrl:
 
         self.nav_publisher.publish(velocity)
 
+    def update_map(self, occupancy_grid):
+        self.map = occupancy_grid
 
-    def update_goal_pose(self, odometry_msg):
-        self.global_goal = odometry_msg.pose
 
+    def update_goal_pose(self, occupancy_grid):
+        unknown_pixels = []
+        n = len(occupancy_grid.data)
+        print(n)
+        for i in range(n):
+            pixel = occupancy_grid.data(i)
+            if i+1 < n and pixel + occupancy_grid.data(i+1) == -1:
+                unknown_pixels.append([i % occupancy_grid.info.width, i/occupancy_grid.info.width])
+                continue
+            if i + occupancy_grid.info.width < n and pixel + occupancy_grid.data(i + occupancy_grid.info.width) == -1:
+                unknown_pixels.append([i % occupancy_grid.info.width, i/occupancy_grid.info.width])
+                continue
+        
+        a = np.array(unknown_pixels)
+        mini = float('inf')
+        res = []
+        print(len(a))
+        for pixel in a:
+            print(pixel)
+            if mini > euclidean_distance(self.pose_on_map, pixel):
+                res = pixel
+        if len(res) == 2:
+            self.global_goal.x = res[0]
+            self.global_goal.y = res[1]
+            self.global_goal.z = 0
+
+
+def euclidean_distance(a, b):
+    return ((a[0]-b[0])**2+(a[1]-b[1])**2)**0.5
+        
 def ramp(base, target, step):
     if base < target:
         return base+step
