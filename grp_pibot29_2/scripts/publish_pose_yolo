@@ -11,6 +11,10 @@ from tf2_geometry_msgs import *
 import numpy as np
 import cv2,time, math
 from cv_bridge import CvBridge
+import torch
+import pathlib
+
+pathlib.WindowsPath = pathlib.PosixPath
 
 def infiniteTalk():
     # Initialize ROS node with ROS client
@@ -51,41 +55,25 @@ class Vision:
         self.align_to = rs.stream.color
         self.align = rs.align(self.align_to)
 
-        self.color_info=(0, 0, 255)
-        self.rayon=10
-
         self.count=1
         self.refTime= time.process_time()
         self.freq= 60
 
-        rosNode.declare_parameter( 'color', 0 )
-        rosNode.declare_parameter( 'range_color', 0 )
-
-        self.color = self.rosNode.get_parameter( 'color' ).value
-        self.range_color = self.rosNode.get_parameter( 'range_color' ).value
-
-        self.color = 65
-        self.range_color = 15
-        self.lo=np.array([self.color-self.range_color, 0, 0])
-        self.hi=np.array([self.color+self.range_color, 255, 255])
-
-        self.color_info=(0, 0, 255)
-
-        self.kernel = np.ones((5, 5), np.uint8)
+        # yolo model load
+        # Chemin absolu vers le modèle et yolov5
+        model_path = '/home/o2p9/ros_space/playground/train/ros_project_long/weights/best.pt'
+        yolov5_path = '/home/o2p9/yolov5'
+        self.model = torch.hub.load(yolov5_path, 'custom', path=model_path, source='local', force_reload=True)
 
         self.detected = False
         self.previous_detected = False
         self.number_detected = 0
     
-    def __del__(self):
-        self.pipeline.stop()
+    # def __del__(self):
+    #     self.pipeline.stop()
 
     def vision_callback(self):
-        # self.color = self.rosNode.get_parameter( 'color' ).value
-        # self.range_color = self.rosNode.get_parameter( 'range_color' ).value
-
-        self.lo=np.array([self.color-self.range_color, 50, 50])
-        self.hi=np.array([self.color+self.range_color, 255, 255])
+        
         while True:
             # This call waits until a new coherent set of frames is available on a device
             frames = self.pipeline.wait_for_frames()
@@ -113,46 +101,36 @@ class Vision:
 
             depth_colormap_dim = depth_colormap.shape
             color_colormap_dim = color_image.shape
-
-            mask=cv2.inRange(color_image, self.lo, self.hi)
-            mask=cv2.erode(mask, self.kernel, iterations=1)
-            mask=cv2.dilate(mask, self.kernel, iterations=4)
-            mask=cv2.medianBlur(mask, 5)
             
-            coords = []
-
-            # Trouver les contours du masque
-            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-            for i in range(len(contours)):
-                # Obtenir le rectangle englobant (bounding box)
-                c_x, c_y, c_w, c_h = cv2.boundingRect(contours[i])
-
-                if (c_w/c_h) > 0.65 and c_w > 25 and c_h > 25:
-                    # Extraire la ROI
-                    roi = color_image_bgr[c_y:c_y+c_h, c_x:c_x+c_w]
-
-                    roi_resized = cv2.resize(roi, None, fx = 100/c_w, fy = 100/c_w)
-                    coords.append((c_x, c_y, c_w, c_h))
-                    cv2.rectangle(color_image_bgr, (c_x, c_y), (c_x + c_w, c_y + c_h), (0,0,255), 2)
-                    cv2.circle(color_image_bgr, (int(c_x + c_w/2), int(c_y + c_h/2)), 5, (0, 0, 255), 2)
-
-                    # Afficher la ROI
-                    cv2.imshow('Region d\'interet', roi_resized)
+            results = self.model(color_image_bgr)
+            # Récupérer les boîtes de détection, les scores et les classes
+            boxes = results.xywh[0]  # coordonnées des boîtes englobantes [x_center, y_center, width, height, confidence, class]
+            classes = results.names  # Les classes d'objets détectées
+            confidences = boxes[:, 4].tolist()  # Liste des scores de confiance
+            labels = boxes[:, 5].tolist()  # Liste des indices des classes détectées
+            coords = boxes[:, :4].tolist() 
             
             self.detected = False
 
-            for i in range(len(coords)):
-                x, y, w, h = coords[i]
+            for i in range(len(boxes)):
+                x, y, w, h, conf, clc = boxes[i]
+                x = int(x)
+                y = int(y)
+                w = int(w)
+                h = int(h)
+                print(x, y, w, h)
+
+                cv2.rectangle(color_image_bgr, (x - w//2, y - h//2), (x + w//2, y + h//2), (0,0,255), 2)
+                cv2.circle(color_image_bgr, (int(x), int(y)), 5, (0, 0, 255), 2)
 
                 if int(x + w/2) < 848 and int(y + h/2) < 480:
-                    depth = depth_frame.get_distance(int(x + w/2), int(y + h/2))
-                    dx ,dy, dz = rs.rs2_deproject_pixel_to_point(color_intrin, [x,y], depth)
+                    depth = depth_frame.get_distance(int(x), int(y))
+                    dx ,dy, dz = rs.rs2_deproject_pixel_to_point(color_intrin, [x - w//2,y - h//2], depth)
                 else:
                     dx, dy, dz = 0, 0, 0
 
                 a = 424/(35*3.14159/180)
-                theta = -(int(x + w/2) - 424)/a
+                theta = -(int(x) - 424)/a
                 distance = math.sqrt(((dx)**2) + ((dy)**2) + ((dz)**2))
                 pose = Pose()
                 if distance**2<0.04:
@@ -169,17 +147,13 @@ class Vision:
                 self.number_detected = 0
             if self.detected and self.previous_detected:
                 self.number_detected += 1
-            if self.number_detected == 30:
+            if self.number_detected == 5:
                 sound = Sound()
                 sound.value = 0
                 self.sound_publisher.publish(sound)
                 self.distance_publisher.publish(pose)
             
-            cv2.imshow('camera',color_image_bgr)
-            cv2.imshow('mask',mask)
-
-            image2=cv2.bitwise_and(color_image_bgr, color_image_bgr, mask= mask)
-            cv2.putText(color_image_bgr, "Couleur: {:d}".format(self.color), (10, 30), cv2.FONT_HERSHEY_DUPLEX, 1, self.color_info, 1, cv2.LINE_AA)
+            # cv2.imshow('camera',color_image)
 
             msg_image = self.bridge.cv2_to_imgmsg(color_image_bgr,"bgr8")
             msg_image.header.stamp = self.rosNode.get_clock().now().to_msg()

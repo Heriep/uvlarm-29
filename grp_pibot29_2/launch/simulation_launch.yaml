@@ -14,3 +14,12 @@ launch:
         - { name: "threshold_dist", value: 0.6 }
         - { name: "angular_speed", value: 1.0}
         - { name: "limite_angle", value: 1.1}
+  - node:
+      pkg: "grp_pibot29"
+      exec: "publish_pose_yolo"
+      param:
+        - { name: "topic4cmd", value: 'cmd_vel' }
+        - { name: "linear_speed", value: 1.0 }
+        - { name: "threshold_dist", value: 0.6 }
+        - { name: "angular_speed", value: 1.0}
+        - { name: "limite_angle", value: 1.1}

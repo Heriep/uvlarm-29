@@ -2,12 +2,16 @@ import cv2
 import torch
 from ultralytics import YOLO
 from IPython.display import Image, display
+import pathlib
 
-# Load the model
-path = "/train/ros_project_long/weights/best.pt"
-#model = YOLO(path, 'yolov5s')
-#model = torch.hub.load('.', 'custom', path='C:/Users/pierr/yolov5/runs/train/yolo_road_det/weights/best.pt', source='local')
-model = torch.hub.load('/train/yolo_road_det', 'yolov5s')
+pathlib.WindowsPath = pathlib.PosixPath
+
+# Chemin absolu vers le modèle et yolov5
+model_path = '/home/o2p9/ros_space/playground/train/ros_project_long/weights/best.pt'
+yolov5_path = '/home/o2p9/yolov5'
+
+# Chargez le modèle avec torch.hub.load
+model = torch.hub.load(yolov5_path, 'custom', path=model_path, source='local', force_reload=True)
 
 # Set webcam input
 cam = cv2.VideoCapture(0)
@@ -18,9 +22,15 @@ while True:
 
     # Perform object detection
     results = model(img)
-
+    # Récupérer les boîtes de détection, les scores et les classes
+    boxes = results.xywh[0]  # coordonnées des boîtes englobantes [x_center, y_center, width, height, confidence, class]
+    classes = results.names  # Les classes d'objets détectées
+    confidences = boxes[:, 4].tolist()  # Liste des scores de confiance
+    labels = boxes[:, 5].tolist()  # Liste des indices des classes détectées
+    coordinates = boxes[:, :4].tolist() 
+    print(coordinates)
     # Display predictions
-    results.show()
+    #results.show()
     
     # Press 'q' or 'Esc' to quit
     if (cv2.waitKey(1) & 0xFF == ord("q")) or (cv2.waitKey(1)==27):
