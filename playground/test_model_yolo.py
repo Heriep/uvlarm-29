@@ -4,10 +4,10 @@ from ultralytics import YOLO
 from IPython.display import Image, display
 
 # Load the model
-path = "C:/Users/pierr/yolov5/runs/train/yolo_road_det/weights/best.pt"
+path = "/train/ros_project_long/weights/best.pt"
 #model = YOLO(path, 'yolov5s')
 #model = torch.hub.load('.', 'custom', path='C:/Users/pierr/yolov5/runs/train/yolo_road_det/weights/best.pt', source='local')
-model = torch.hub.load('C:/Users/pierr/yolov5/runs/train/yolo_road_det', 'yolov5s')
+model = torch.hub.load('/train/yolo_road_det', 'yolov5s')
 
 # Set webcam input
 cam = cv2.VideoCapture(0)
