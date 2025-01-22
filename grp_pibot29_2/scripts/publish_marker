@@ -30,7 +30,7 @@ class PublishMarker:
         self.camera_pose = Pose()
         self.markers = []
         self.marker_id = 0
-        self.DISTANCE = 0.2
+        self.DISTANCE = 0.35
         
     def publish_marker(self, pose_msg):
 
@@ -67,7 +67,7 @@ class PublishMarker:
 
         marker.type = Marker.MESH_RESOURCE
 
-        marker.mesh_resource = 'file:/home/o2p9/ros_space/grp_pibot29_2/scripts/ghost.stl'
+        marker.mesh_resource = 'file:/home/o2p9/ros_space/grp_pibot29_2/assets/ghost.stl'
         marker.pose = self.map_pose
         marker.action = 0
         marker.id = self.marker_id

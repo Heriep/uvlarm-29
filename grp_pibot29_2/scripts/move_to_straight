@@ -13,10 +13,10 @@ from visualization_msgs.msg import Marker
 # Parameters
 MODE_THRESHOLD = 1000
 THRESHOLD_DIST = 0.4
-LINEAR_SPEED = 0.5
+LINEAR_SPEED = 0.3
 ANGULAR_SPEED = 1.3
 LIMITE_ANGLE = 1.1 # seuil angle detection obstacle
-ANGLE_STRAIGHT = 0.1 # Seuil angle aligné sur l'objectif
+ANGLE_STRAIGHT = 0.2 # Seuil angle aligné sur l'objectif
 
 def infiniteTalk():
     # Initialize ROS node with ROS client
@@ -36,9 +36,12 @@ class StraightCtrl:
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self.rosNode)
 
+        self.rosNode.declare_parameter( 'topic4cmd', '' )
+        self.param_node = self.rosNode.get_parameter( 'topic4cmd' ).value
+        print(self.param_node)
+
         self.rosNode.create_subscription( OccupancyGrid, 'map', self.update_map, 10)
-        self.nav_publisher= self.rosNode.create_publisher(Twist, '/multi/cmd_nav', 10 )
-        #self.nav_publisher= self.rosNode.create_publisher(Twist, 'cmd_vel', 10 )
+        self.nav_publisher= self.rosNode.create_publisher(Twist, self.param_node, 10 )
         self.marker_publisher = self.rosNode.create_publisher(Marker, 'marker_goal', 10 )
 
         # Map positioning

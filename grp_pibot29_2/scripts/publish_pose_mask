@@ -179,7 +179,7 @@ class Vision:
             cv2.imshow('mask',mask)
 
             image2=cv2.bitwise_and(color_image_bgr, color_image_bgr, mask= mask)
-            cv2.putText(color_image_bgr, "Couleur: {:d}".format(self.color), (10, 30), cv2.FONT_HERSHEY_DUPLEX, 1, self.color_info, 1, cv2.LINE_AA)
+            #cv2.putText(color_image_bgr, "Couleur: {:d}".format(self.color), (10, 30), cv2.FONT_HERSHEY_DUPLEX, 1, self.color_info, 1, cv2.LINE_AA)
 
             msg_image = self.bridge.cv2_to_imgmsg(color_image_bgr,"bgr8")
             msg_image.header.stamp = self.rosNode.get_clock().now().to_msg()

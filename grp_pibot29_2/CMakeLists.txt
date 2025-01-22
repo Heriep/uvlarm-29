@@ -30,5 +30,12 @@ install(DIRECTORY launch DESTINATION share/${PROJECT_NAME}/)
 
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 
+install(DIRECTORY assets DESTINATION share/${PROJECT_NAME})
+
+
 # Python scripts
 install( PROGRAMS scripts/move_to_straight DESTINATION lib/${PROJECT_NAME} )
+install( PROGRAMS scripts/publish_marker DESTINATION lib/${PROJECT_NAME} )
+install( PROGRAMS scripts/publish_pose_mask DESTINATION lib/${PROJECT_NAME} )
+install( PROGRAMS scripts/publish_pose_yolo DESTINATION lib/${PROJECT_NAME} )
+install( PROGRAMS scripts/launch_slam DESTINATION lib/${PROJECT_NAME} )
