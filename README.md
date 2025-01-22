@@ -91,22 +91,26 @@ source /opt/ros/iron/setup.bash
 
 If you want to start the simulation environment :
 ```bash
-ros2 launch grp_pibot29_2 simulation_launch.yaml
+ros2 launch grp_pibot29_2 simulation_v2_launch.yaml
 ```
 (make sure you have the tsim package in your ros workspace)
 
-If you want to start the vision program : 
+If you want to start only the robot nodes (with yolo vision):
 ```bash
+ros2 launch grp_pibot29_2 tbot_v2_launch.yaml
 ```
 
-If you want to start only the robot nodes with yolo vision:
+If you want to start yolo vision:
 ```bash
-ros2 launch grp_pibot29_2 tbot_launch.yaml
+ros2 launch grp_pibot29_2 vision_mask_launch.yaml
 ```
 
-Or
-
-If you want to start only the robot nodes with simple vision:
+If you want to start yolo vision:
 ```bash
-ros2 launch grp_pibot29_2 tbot_launch.yaml
+ros2 launch grp_pibot29_2 vision_yolo_launch.yaml
+```
+
+If you want to start the operator configuration:
+```bash
+ros2 launch grp_pibot29_2 operator_launch.yaml
 ```

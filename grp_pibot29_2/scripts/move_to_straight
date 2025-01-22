@@ -254,7 +254,7 @@ class StraightCtrl:
         mini = float('inf')
         res = []
         for pixel in a:
-            pixel_in_map = (self.map.info.origin.position.x + pixel[0]*self.map.info.resolution, self.map.info.origin.position.x + pixel[1]*self.map.info.resolution)
+            pixel_in_map = (self.map.info.origin.position.x + pixel[0]*self.map.info.resolution, self.map.info.origin.position.y + pixel[1]*self.map.info.resolution)
             temp_mini = euclidean_distance((self.pose_on_map.position.x, self.pose_on_map.position.y), pixel_in_map)
             if mini > temp_mini:
                 res = pixel
