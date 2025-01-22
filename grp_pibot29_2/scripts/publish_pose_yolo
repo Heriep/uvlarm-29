@@ -114,7 +114,7 @@ class Vision:
 
             for i in range(len(boxes)):
                 x, y, w, h, conf, clc = boxes[i]
-                if conf < 0.4:
+                if conf < 0.5:
                     continue
                 x = int(x)
                 y = int(y)
@@ -165,7 +165,7 @@ class Vision:
                 self.number_detected = 0
             if self.detected and self.previous_detected:
                 self.number_detected += 1
-            if self.number_detected == 1:
+            if self.number_detected == 2:
                 sound = Sound()
                 sound.value = 0
                 self.sound_publisher.publish(sound)

@@ -76,8 +76,8 @@ class StraightCtrl:
         self.mode_control = 0
 
         node.create_timer(0.1, self.control_callback)
-        node.create_timer(0.1, self.update_self_pose)
-        node.create_timer(10, self.update_goal_pose)
+        # node.create_timer(0.1, self.update_self_pose)
+        # node.create_timer(10, self.update_goal_pose)
     
     def update_self_pose(self):
         currentTime= rclpy.time.Time()
@@ -146,9 +146,9 @@ class StraightCtrl:
         else:
             self.mode_control += 1
         
-        if self.mode_control > MODE_THRESHOLD:
+        if self.mode_control > MODE_THRESHOLD and False:
             print("mode suivi d'objectif")
-            self.straight_velocity = ramp(self.straight_velocity, LINEAR_SPEED, 0.025)
+            self.straight_velocity = ramp(self.straight_velocity, LINEAR_SPEED, 0.0025)
 
             if localGoal.position.x < 0 and localGoal.position.x > 0.01: 
                 velocity.angular.z = ANGULAR_SPEED
