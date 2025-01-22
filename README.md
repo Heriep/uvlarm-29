@@ -43,7 +43,16 @@ sudo apt-get -y install colcon
 
 The simulation uses Rviz2 and Gazebo, make sure to install both if you intent to use the simulation
 
-## Setting up
+### Machine learning tools
+
+Install the necessary dependencies to run yolov5 (to run outside the rosproject)
+```bash
+git clone https://github.com/ultralytics/yolov5
+pip install -r yolov5/requirements.txt
+```
+There might be a compatibility issue with openCV and two other modules but does not seem to affect the program
+
+## Setting up for challenge 1
 
 Use the following to build the packages
 ```bash
@@ -66,4 +75,38 @@ Or
 If you want to start only the robot nodes :
 ```bash
 ros2 launch grp_pibot29 tbot_launch.yaml
+```
+
+## Setting up for challenge 2
+
+Use the following to build the packages
+```bash
+colcon build
+```
+
+Don't forget to source the setup file if it is not included in your .bashrc file
+```bash
+source /opt/ros/iron/setup.bash
+```
+
+If you want to start the simulation environment :
+```bash
+ros2 launch grp_pibot29_2 simulation_launch.yaml
+```
+(make sure you have the tsim package in your ros workspace)
+
+If you want to start the vision program : 
+```bash
+```
+
+If you want to start only the robot nodes with yolo vision:
+```bash
+ros2 launch grp_pibot29_2 tbot_launch.yaml
+```
+
+Or
+
+If you want to start only the robot nodes with simple vision:
+```bash
+ros2 launch grp_pibot29_2 tbot_launch.yaml
 ```
