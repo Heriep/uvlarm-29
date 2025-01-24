@@ -45,7 +45,7 @@ The simulation uses Rviz2 and Gazebo, make sure to install both if you intent to
 
 ### Machine learning tools
 
-Install the necessary dependencies to run yolov5 (to run outside the rosproject)
+Install the necessary dependencies to run yolov5 (ros space and yolo must be in the same folder)
 ```bash
 git clone https://github.com/ultralytics/yolov5
 pip install -r yolov5/requirements.txt
