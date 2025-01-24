@@ -123,3 +123,7 @@ rqt
 ```
 
 Then go into Plugins>Configurations>Dynamic Reconfigure and select the node you want to tweak
+
+## Complementary info
+
+You can find info about performance and the dataset in yolo/result and yolo/dataset respectively
