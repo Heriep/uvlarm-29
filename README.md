@@ -115,7 +115,7 @@ If you want to start the operator configuration:
 ros2 launch grp_pibot29_2 operator_launch.yaml
 ```
 
-## Tweak paramters while running
+## Tweak parameters while running
 
 start RQT
 ```bash
