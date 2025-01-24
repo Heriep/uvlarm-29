@@ -61,8 +61,8 @@ class Vision:
 
         # yolo model load
         # Chemin absolu vers le modèle et yolov5
-        model_path = '/home/o2p9/ros_space/playground/train/ros_project_long/weights/best.pt'
-        yolov5_path = '/home/o2p9/yolov5'
+        model_path = 'yolo/result/ros_project_long/weights/best.pt'
+        yolov5_path = '../yolov5'
         self.model = torch.hub.load(yolov5_path, 'custom', path=model_path, source='local', force_reload=True)
 
         self.detected = False
