@@ -114,3 +114,12 @@ If you want to start the operator configuration:
 ```bash
 ros2 launch grp_pibot29_2 operator_launch.yaml
 ```
+
+## Tweak paramters while running
+
+start RQT
+```bash
+rqt
+```
+
+Then go into Plugins>Configurations>Dynamic Reconfigure and select the node you want to tweak
