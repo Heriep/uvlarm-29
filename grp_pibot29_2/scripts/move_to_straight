@@ -37,7 +37,17 @@ class StraightCtrl:
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self.rosNode)
 
         self.rosNode.declare_parameter( 'topic4cmd', '' )
+        self.rosNode.declare_parameter( 'linear_speed', 0.0 )
+        self.rosNode.declare_parameter( 'threshold_dist', 0.0 )
+        self.rosNode.declare_parameter( 'angular_speed', 0.0 )
+        self.rosNode.declare_parameter( 'limite_angle', 0.0 )
+
         self.param_node = self.rosNode.get_parameter( 'topic4cmd' ).value
+        self.LINEAR_SPEED = self.rosNode.get_parameter( 'linear_speed' ).value
+        self.THRESHOLD_DIST = self.rosNode.get_parameter( 'threshold_dist' ).value
+        self.ANGULAR_SPEED = self.rosNode.get_parameter( 'angular_speed' ).value
+        self.LIMITE_ANGLE = self.rosNode.get_parameter( 'limite_angle' ).value
+
         print(self.param_node)
 
         self.rosNode.create_subscription( OccupancyGrid, 'map', self.update_map, 10)
@@ -99,6 +109,12 @@ class StraightCtrl:
         
 
     def control_callback(self):
+
+        self.LINEAR_SPEED = self.rosNode.get_parameter( 'linear_speed' ).value
+        self.THRESHOLD_DIST = self.rosNode.get_parameter( 'threshold_dist' ).value
+        self.ANGULAR_SPEED = self.rosNode.get_parameter( 'angular_speed' ).value
+        self.LIMITE_ANGLE = self.rosNode.get_parameter( 'limite_angle' ).value
+        
         marker = Marker()
         marker.scale.x = 0.05
         marker.scale.y = 0.05
