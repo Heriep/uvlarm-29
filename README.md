@@ -127,3 +127,7 @@ Then go into Plugins>Configurations>Dynamic Reconfigure and select the node you 
 ## Complementary info
 
 You can find info about performance and the dataset in yolo/result and yolo/dataset respectively
+
+## Presentation Video
+
+The presentation video is accessible [here](https://www.youtube.com/watch?v=OF9wqNHIaPA)
